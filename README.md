@@ -4,7 +4,7 @@ An AI-assisted Quality Engineering platform integrating
 Jira, automated testing, AI agents, and CI/CD.
 
 ## Project Status
-Phase 1: Environment setup
+Phase 2: 
 
 ## Planned Technologies
 - Python
@@ -16,3 +16,4 @@ Phase 1: Environment setup
 - PostgreSQL
 - Docker
 - GitHub Actions
+
