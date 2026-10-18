@@ -196,7 +196,7 @@ Interactive API documentation:
 |---|---|---|---|
 | GET | `/` | Welcome message | Implemented |
 | GET | `/health` | Application health check | Implemented |
-| GET | `/jira/issues/{issue_key}` | Retrieve a Jira issue | In progress |
+| GET | `/jira/issue/{issue_key}` | Retrieve a Jira issue | In progress |
 
 ### Example Health Response
 
