@@ -15,7 +15,7 @@ def test_get_jira_issue_success():
         "fields": {
             "summary": "Retrieve Jira issues through the backend",
             "status": {"name": "À faire"},
-            "description": None,
+            "description": "",
         },
     }
 
@@ -28,7 +28,7 @@ def test_get_jira_issue_success():
             "key": "SCRUM-6",
             "summary": "Retrieve Jira issues through the backend",
             "status": "À faire",
-            "description": None,
+            "description": "",
         }
 
         mock_jira_client.return_value.get_issue.assert_called_once_with(
@@ -97,5 +97,59 @@ def test_get_jira_issue_timeout():
 
         mock_jira.return_value.get_issue.assert_called_once_with(
             "SCRUM-6"
+        )
+
+def test_get_jira_issue_with_adf_description():
+    fake_issue = {
+        "key": "SCRUM-6",
+        "fields": {
+            "summary": "User login",
+            "status": {"name": "To Do"},
+            "description": {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Acceptance Criteria:"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "bulletList",
+                        "content": [
+                            {
+                                "type": "listItem",
+                                "content": [
+                                    {
+                                        "type": "paragraph",
+                                        "content": [
+                                            {
+                                                "type": "text",
+                                                "text": "User can log in."
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    }
+
+    with patch("backend.app.main.JiraClient") as mock_jira:
+        mock_jira.return_value.get_issue.return_value = fake_issue
+
+        response = client.get("/jira/issue/SCRUM-6")
+
+        assert response.status_code == 200
+        assert response.json()["description"] == (
+            "Acceptance Criteria:\n"
+            "- User can log in.\n"
         )
 

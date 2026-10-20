@@ -2,6 +2,7 @@ import requests
 
 from fastapi import FastAPI, HTTPException
 from backend.app.services.jira_client import JiraClient
+from backend.app.utils.adf_parser import extract_text_from_adf
 
 
 
@@ -34,7 +35,9 @@ def get_jira_issue(issue_key: str):
             "key" : issue["key"],
             "summary" : issue["fields"]["summary"],
             "status": issue["fields"]["status"]["name"],
-            "description": issue["fields"]["description"],
+            "description": extract_text_from_adf(
+                issue["fields"]["description"]
+                ),
         }
 
     except requests.exceptions.HTTPError as error:
