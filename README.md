@@ -1,348 +1,241 @@
-# Agentic QA Platform
+Agentic QA Platform
+An AI-assisted Quality Assurance platform integrating Jira Cloud, local LLMs, and automated QA workflows.
+Status: Active development — FastAPI backend, Jira issue retrieval, and an AI-powered RequirementsAgent are operational. The latest local test run reported 23 passed, 1 warning.
 
-**An AI-powered Quality Assurance platform combining test automation, Jira integration, and intelligent QA workflows.**
+Overview
+Agentic QA Platform is a portfolio project exploring how specialized AI agents can assist QA engineers throughout the software testing lifecycle: understanding requirements, identifying ambiguities, designing tests, investigating failures, and assessing release risk.
 
-## Overview
+The platform is being built incrementally with an emphasis on traceability, structured outputs, deterministic validation, automated testing, and human oversight. AI-generated suggestions are not automatically treated as approved requirements.
+Implemented Features
+- FastAPI backend: Root, health-check, Jira issue retrieval, and AI requirements-analysis endpoints.
+- Jira Cloud integration: Authenticated Jira REST API v3 access through a reusable JiraClient using environment-based credentials.
+- Issue normalization: Retrieve Jira issue details and convert Atlassian Document Format (ADF) descriptions into readable text.
+- API error handling: Map missing/inaccessible Jira issues and upstream communication errors to appropriate HTTP responses.
+- Local LLM integration: Reusable OllamaClient calling Ollama's /api/generate endpoint. The current development model is qwen3:1.7b.
+- RequirementsAgent: Analyze Jira issue content to suggest requirements, clarification gaps, and test scenarios.
+- Structured AI output: Parse JSON into Pydantic models and reject invalid JSON or invalid schemas.
+- Requirement provenance: Classify requirements as explicit or inferred using a constrained Pydantic field. This is model-reported classification, not yet independently verified against source evidence.
+- Automated tests: Pytest coverage for backend behavior, Jira-related functionality, ADF parsing, requirements schemas, and mocked agent responses. Latest reported run: 23 passed.
+In Progress / Planned
+- Verify AI-generated requirements against exact Jira evidence and evaluate analysis quality.
+- Extract and trace acceptance criteria to proposed tests.
+- Build a dedicated Test Design Agent for structured test cases.
+- Integrate Playwright for automated UI testing and collect execution artifacts.
+- Add failure triage, defect-report drafts, and release risk assessment.
+- Add human review before actions that modify Jira or affect releases.
+- Explore multi-agent orchestration, PostgreSQL, a dashboard, Docker, CI/CD, and observability.
+Technology Stack
+Area	Technology	Status
+Language	Python	Implemented
+API	FastAPI, Uvicorn	Implemented
+HTTP clients	Requests	Implemented
+Configuration	python-dotenv / environment variables	Implemented
+Data validation	Pydantic	Implemented
+Testing	Pytest, FastAPI TestClient, mocks	Implemented
+Project management	Jira Cloud REST API v3	Implemented (issue retrieval)
+Local AI inference	Ollama, Qwen3 1.7B	Implemented
+UI automation	Playwright	Planned
+Agent orchestration	LangGraph (under consideration)	Planned
+Database	PostgreSQL	Planned
+Containerization	Docker	Planned
+CI/CD	GitHub Actions	Planned
+Version control	Git, GitHub	Implemented
 
-Agentic QA Platform is a portfolio project designed to explore how AI agents can support the software testing lifecycle, from requirements analysis to test generation, execution, failure investigation, and defect reporting.
 
-The project is being developed incrementally using Python, FastAPI, Pytest, Jira Cloud, and modern DevOps practices.
+Architecture
+                      Developer / API Client
+                               |
+                               v
+                         FastAPI Backend
+                               |
+               +---------------+----------------+
+               |                                |
+               v                                v
+      Jira issue retrieval            AI requirements endpoint
+               |                                |
+               v                                v
+           JiraClient                    fetch_jira_issue()
+               |                                |
+               v                                v
+        Jira Cloud API                   RequirementsAgent
+                                                |
+                                                v
+                                           OllamaClient
+                                                |
+                                                v
+                                        Local Ollama / Qwen3
+                                                |
+                                                v
+                                    JSON parsing + Pydantic
+                                                |
+                                                v
+                                     RequirementsAnalysis
 
-The long-term goal is to build a modular QA engineering platform in which AI agents assist human testers while maintaining traceability, test reliability, and human oversight.
-
-> **Project status:** Early development — FastAPI foundation and Jira Cloud connectivity implemented. AI agents and advanced QA workflows are planned.
-
-## Features
-
-### Implemented
-
-- FastAPI backend with root and health-check endpoints.
-- Automated API health tests using Pytest.
-- Secure Jira Cloud authentication using environment variables.
-- Jira REST API v3 integration.
-- Reusable `JiraClient` class for retrieving Jira issues.
-- Retrieval of Jira issue keys, summaries, statuses, and descriptions.
-- HTTP error detection using `raise_for_status()`.
-- Initial Jira project management structure with Epics, Stories, and Tasks.
-
-### In Progress
-
-- Exposing Jira issue retrieval through FastAPI.
-- Mapping Jira HTTP errors to appropriate backend responses.
-- Automated unit tests for the Jira integration.
-- Structured processing of Jira issue descriptions.
-
-### Planned
-
-- AI-assisted requirements analysis.
-- AI-generated test scenarios and test cases.
-- Automated UI and API test execution.
-- AI-assisted failure analysis and defect triage.
-- Jira bug-report creation with human approval.
-- Requirements-to-tests traceability.
-- Test execution reporting and release risk assessment.
-- GitHub Actions CI/CD integration.
-- PostgreSQL persistence.
-- Web dashboard.
-- Docker-based deployment.
-- AI agent evaluation and observability.
-
-## Technology Stack
-
-| Category | Technologies |
-|---|---|
-| Language | Python |
-| Backend | FastAPI, Uvicorn |
-| HTTP integration | Requests |
-| Configuration | python-dotenv |
-| Testing | Pytest, FastAPI TestClient |
-| Test automation (planned) | Playwright |
-| AI orchestration (planned) | LangGraph |
-| Database (planned) | PostgreSQL |
-| Containerization (planned) | Docker |
-| CI/CD (planned) | GitHub Actions |
-| Project management | Jira Cloud |
-| Version control | Git, GitHub |
-
-## Architecture
-
-The platform follows a modular architecture that separates API endpoints, external integrations, automated testing, and future AI-agent workflows.
-
-```text
-                    User / Dashboard
-                           |
-                           v
-                    FastAPI Backend
-                           |
-             +-------------+-------------+
-             |             |             |
-             v             v             v
-         Services       AI Agents     Test Engine
-             |          (planned)      (planned)
-             v
-         JiraClient
-             |
-             v
-       Jira Cloud REST API
-```
-
-### Architectural Responsibilities
-
-**FastAPI Backend**
-
-Receives HTTP requests, exposes application functionality, validates inputs, and returns structured API responses.
-
-**Services**
-
-Encapsulate communication with external systems. The Jira service manages authentication, API requests, and HTTP error detection.
-
-**AI Agents (Planned)**
-
-Will analyze requirements, propose tests, investigate failures, and assist with QA decisions using controlled tools and human approval.
-
-**Test Engine (Planned)**
-
-Will execute automated tests and collect results for reporting and analysis.
-
-## Project Structure
-
-```text
+           Future: Test Design Agent -> Test Execution -> Failure Triage
+                                      -> Release Risk
+Responsibilities:
+- API layer: Accepts requests and exposes validated responses.
+- Jira service: Handles external Jira communication and issue retrieval.
+- ADF parsing: Converts Jira's rich-text description structure to plain text.
+- Ollama service: Encapsulates communication with the local language model.
+- RequirementsAgent: Builds the analysis prompt, parses model output, and returns typed analysis data.
+- Pydantic schemas: Define the contract for requirements, gaps, and suggested scenarios.
+Project Structure
+The following highlights the main components; additional test and package files may be present.
 agentic-qa-platform/
 ├── backend/
 │   └── app/
 │       ├── main.py
+│       ├── agents/
+│       │   └── requirements_agent.py
+│       ├── schemas/
+│       │   └── requirements.py
 │       └── services/
-│           ├── __init__.py
-│           └── jira_client.py
-│
+│           ├── jira_client.py
+│           └── ollama_client.py
 ├── scripts/
 │   └── test_jira_connection.py
-│
 ├── tests/
-│   └── test_health.py
-│
+│   ├── test_requirements_agent.py
+│   ├── test_requirements_schema.py
+│   └── ...
 ├── .env.example
 ├── .gitignore
-├── README.md
-└── requirements.txt
-```
-
-The `.env` file is created locally and excluded from version control.
-
-## Getting Started
-
-### Prerequisites
-
+├── requirements.txt
+└── README.md
+Getting Started
+Prerequisites
 - Python 3.10 or later
 - Git
-- A Jira Cloud account for Jira integration
-- An Atlassian API token
-
-### 1. Clone the Repository
-
-```bash
+- Jira Cloud account and Atlassian API token
+- Ollama installed and running for AI analysis
+- A system capable of running the chosen local model; the smaller qwen3:1.7b model is used for development on CPU
+1. Clone the repository
 git clone git@github.com:mmed-SaaD/agentic-qa-platform.git
 cd agentic-qa-platform
-```
-
-### 2. Create and Activate a Virtual Environment
-
-```bash
+2. Create and activate a virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-```
-
-On Windows PowerShell:
-
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
-### 3. Install Dependencies
-
-```bash
+On Windows PowerShell, activation is .venv\Scripts\Activate.ps1.
+3. Install Python dependencies
 python -m pip install -r requirements.txt
-```
-
-### 4. Configure Environment Variables
-
-Create a `.env` file in the project root:
-
-```env
+4. Configure Jira credentials
+Copy .env.example to .env and populate the Jira values:
 JIRA_BASE_URL=https://your-site.atlassian.net
 JIRA_EMAIL=your-atlassian-email@example.com
 JIRA_API_TOKEN=your-api-token
-```
+Never commit .env, passwords, or API tokens. Ensure .env is ignored by Git.
+5. Start Ollama and download the development model
+Install Ollama on the host, then run:
+ollama pull qwen3:1.7b
+Make sure the Ollama service is running and accessible at http://localhost:11434. In the current setup, Ollama runs on Windows and the FastAPI backend runs in WSL. The client uses the Ollama HTTP API; the model must be available to the Ollama server receiving requests.
+The default model is currently configured in backend/app/services/ollama_client.py. If you choose a different model or host, adjust the client configuration accordingly.
 
-Never commit your `.env` file, API tokens, or passwords.
-
-### 5. Start the Backend
-
-```bash
+6. Start FastAPI
+From the repository root:
 python -m uvicorn backend.app.main:app --reload
-```
+- API: http://127.0.0.1:8000
+- Interactive API docs: http://127.0.0.1:8000/docs
+API Endpoints
+Method	Endpoint	Description	Status
+GET	/	Root/welcome endpoint	Implemented
+GET	/health	Application health check	Implemented
+GET	/jira/issue/{issue_key}	Retrieve and normalize a Jira issue	Implemented
+POST	/ai/requirements/analyze/{issue_key}	Analyze a Jira issue using the local RequirementsAgent	Implemented
 
-The backend runs locally at:
 
-`http://127.0.0.1:8000`
-
-Interactive API documentation:
-
-`http://127.0.0.1:8000/docs`
-
-## API Endpoints
-
-| Method | Endpoint | Description | Status |
-|---|---|---|---|
-| GET | `/` | Welcome message | Implemented |
-| GET | `/health` | Application health check | Implemented |
-| GET | `/jira/issue/{issue_key}` | Retrieve a Jira issue | In progress |
-
-### Example Health Response
-
-```json
+Example: AI requirements analysis
+Open /docs and execute:
+POST /ai/requirements/analyze/SHOP-2
+An illustrative response (actual model output varies):
 {
-  "status": "healthy",
-  "service": "agentic-qa-platform"
+  "issue_key": "SHOP-2",
+  "requirements": [
+    {
+      "description": "Registered customers can log in using an email address and password.",
+      "category": "functional",
+      "source": "explicit"
+    }
+  ],
+  "gaps": [
+    {
+      "description": "The expected response to invalid credentials is not specified.",
+      "question": "What should the application display after an unsuccessful login?"
+    }
+  ],
+  "suggested_test_scenarios": [
+    "Verify login with valid credentials",
+    "Verify the defined behavior for invalid credentials"
+  ]
 }
-```
+source accepts only explicit or inferred. The distinction is useful for review, but the current system does not yet verify whether each classification is factually supported by a quotation from Jira.
+Error handling
+- Jira lookup and communication errors are translated into API errors.
+- Invalid AI JSON or output that fails Pydantic validation is handled as a requirements-analysis error; the AI endpoint returns an upstream failure response rather than silently accepting malformed output.
+- Ollama must be reachable for AI requests. Model inference can be slow on CPU-only hardware.
+Testing
+Run the complete suite from the repository root:
+python -m pytest -q
+Latest locally reported result:
+23 passed, 1 warning in 0.72s
+The suite includes mocked integrations so core behavior can be checked without requiring live Jira or Ollama calls for every test. Tests exercise valid and invalid requirements-analysis responses, including rejection of invalid source values.
 
-### Planned Jira Issue Response
+The remaining warning should be investigated separately; a passing suite does not mean all runtime paths or AI output quality have been fully verified.
+Development Roadmap
+Phase 1 — Foundation
+- [x] Initialize repository and Python environment
+- [x] Implement FastAPI root and health endpoints
+- [x] Add initial automated tests
+- [x] Publish code to GitHub
+Phase 2 — Jira Integration
+- [x] Configure Jira Cloud project and issue types
+- [x] Authenticate using environment variables
+- [x] Implement reusable JiraClient
+- [x] Expose issue retrieval through FastAPI
+- [x] Parse ADF descriptions
+- [x] Add mocked Jira-related tests and error handling
+- [ ] Add controlled issue creation/update workflows
+Phase 3 — Requirements Intelligence
+- [x] Integrate local Ollama model
+- [x] Implement RequirementsAgent
+- [x] Generate structured requirements, gaps, and scenario suggestions
+- [x] Validate output with Pydantic
+- [x] Add explicit/inferred source classification
+- [ ] Verify traceability against exact Jira evidence
+- [ ] Evaluate semantic quality and reduce unsupported assumptions
+- [ ] Add human review and approval
+Phase 4 — Test Design and Execution
+- [ ] Implement dedicated Test Design Agent
+- [ ] Generate structured test cases from reviewed requirements
+- [ ] Integrate Playwright and automated execution
+- [ ] Store execution results and artifacts
+- [ ] Link tests to Jira requirements
+Phase 5 — Intelligent QA Workflows
+- [ ] Analyze test failures
+- [ ] Draft and triage defects with human approval
+- [ ] Implement release risk assessment
+- [ ] Introduce agent orchestration where useful
+Phase 6 — Production-Oriented Engineering
+- [ ] Add persistence and dashboard
+- [ ] Containerize the platform
+- [ ] Configure GitHub Actions CI/CD
+- [ ] Add structured logging, metrics, and AI evaluation
+- [ ] Strengthen access controls and document deployment
+Engineering Principles
+- Separation of concerns: Keep API routes, integrations, schemas, and agents independently maintainable.
+- Testability: Mock external dependencies and test error paths.
+- Traceability: Distinguish explicit Jira requirements from inferred suggestions; future work will add evidence-level verification.
+- Security: Store secrets outside source control and avoid leaking credentials in errors or logs.
+- Human oversight: Require review before AI suggestions become accepted requirements or trigger external changes.
+- Incremental delivery: Implement, test, and document features in small steps.
+Project: Agentic QA Platform
+Development status: Active development
+Focus: QA Engineering · API Testing · AI Agents · Jira Integration · Test Automation
 
-```json
-{
-  "key": "SCRUM-6",
-  "summary": "Retrieve Jira issues through the backend",
-  "status": "À faire",
-  "description": {
-    "type": "doc",
-    "version": 1,
-    "content": []
-  }
-}
-```
+Author
 
-Jira Cloud API v3 uses Atlassian Document Format (ADF) for rich-text descriptions. The example above abbreviates the description content.
+Designed and developed by Mohamed Saad
 
-## Jira Integration
+Built with a passion for Quality Assurance, test automation, and AI-driven software engineering.
 
-The Jira integration uses the Jira Cloud REST API v3 with authenticated HTTPS requests.
-
-The `JiraClient` service currently supports retrieving individual Jira issues.
-
-Example:
-
-```python
-from backend.app.services.jira_client import JiraClient
-
-client = JiraClient()
-issue = client.get_issue("SCRUM-6")
-
-print(issue["key"])
-print(issue["fields"]["summary"])
-```
-
-The integration uses environment variables for credentials, an HTTP request timeout, and `raise_for_status()` for detecting HTTP errors.
-
-A live connection to Jira Cloud has been verified with HTTP `200 OK`.
-
-## Testing
-
-The project uses Pytest for automated testing.
-
-Run the test suite from the project root:
-
-```bash
-python -m pytest -v
-```
-
-The initial FastAPI health-check tests have passed.
-
-Upcoming test coverage will include:
-
-- Successful Jira issue retrieval.
-- Nonexistent or inaccessible Jira issues.
-- Authentication failures.
-- Network errors and timeouts.
-- Response validation.
-- Verification that credentials are not exposed.
-
-Jira integration unit tests will use mocked HTTP responses to avoid depending on external services.
-
-## Development Roadmap
-
-### Phase 1 — Project Foundation
-
-- [x] Initialize Git repository.
-- [x] Configure Python virtual environment.
-- [x] Create FastAPI application.
-- [x] Implement health-check endpoint.
-- [x] Add initial Pytest tests.
-- [x] Publish repository to GitHub.
-
-### Phase 2 — Jira Integration
-
-- [x] Create Jira Scrum space.
-- [x] Define Epic, Story, and Task.
-- [x] Configure secure API authentication.
-- [x] Verify live Jira API connectivity.
-- [x] Create reusable JiraClient.
-- [ ] Expose Jira integration through FastAPI.
-- [ ] Implement automated Jira client tests.
-- [ ] Parse Atlassian Document Format.
-- [ ] Add Jira issue creation and update capabilities.
-
-### Phase 3 — AI-Powered Test Design
-
-- [ ] Integrate an LLM provider.
-- [ ] Implement requirements analysis.
-- [ ] Extract acceptance criteria.
-- [ ] Generate structured test scenarios.
-- [ ] Add human review and approval.
-- [ ] Evaluate test generation quality.
-
-### Phase 4 — Test Automation
-
-- [ ] Integrate Playwright.
-- [ ] Implement automated test execution.
-- [ ] Collect test results and artifacts.
-- [ ] Associate test cases with Jira requirements.
-
-### Phase 5 — Intelligent QA Workflows
-
-- [ ] Implement failure analysis.
-- [ ] Add AI-assisted defect triage.
-- [ ] Generate Jira bug-report drafts.
-- [ ] Implement release risk assessment.
-- [ ] Introduce multi-agent orchestration.
-
-### Phase 6 — Production-Oriented Engineering
-
-- [ ] Add PostgreSQL.
-- [ ] Implement a dashboard.
-- [ ] Containerize the application.
-- [ ] Configure GitHub Actions CI/CD.
-- [ ] Add logging and observability.
-- [ ] Strengthen security and access controls.
-- [ ] Document architecture and deployment.
-
-## Engineering Principles
-
-This project emphasizes:
-
-- **Separation of concerns:** API routes, services, and AI agents have distinct responsibilities.
-- **Testability:** External integrations should be mockable and independently testable.
-- **Security:** Credentials remain outside source code and are never intentionally exposed in API responses.
-- **Traceability:** QA activities should be linked to their originating requirements.
-- **Human oversight:** AI-generated actions affecting external systems should be reviewed before execution.
-- **Incremental development:** Features are implemented, tested, and documented progressively.
-
-## License
-
-No license has been selected yet.
-
----
-
-**Project:** Agentic QA Platform  
-**Development status:** Active development  
-**Primary focus:** QA Engineering, Test Automation, AI Agents, API Integration, and DevOps
+© 2026 Agentic QA Platform. Built with Python, curiosity, and a commitment to software quality.
