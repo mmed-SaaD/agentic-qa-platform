@@ -1,8 +1,11 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 class Requirement(BaseModel):
     description: str
     category: str
+    source: Literal["explicit", "inferred"]
 
 class RequirementGap(BaseModel):
     description: str

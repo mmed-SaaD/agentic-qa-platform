@@ -24,7 +24,7 @@ def test_generate_returns_ai_response(mock_post):
     mock_post.assert_called_once_with(
         "http://localhost:11434/api/generate",
         json={
-            "model": "qwen3:4b",
+            "model": "qwen3:1.7b",
             "prompt": "Suggest one negative login test.",
             "stream": False,
             "think": False,

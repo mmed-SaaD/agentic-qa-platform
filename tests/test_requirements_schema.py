@@ -15,6 +15,7 @@ def test_requirements_analysis_valid():
             Requirement(
                 description="Customers can log in.",
                 category="functional",
+                source="inferred"
             )
         ],
         gaps=[
