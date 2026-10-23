@@ -15,7 +15,8 @@ def test_requirements_analysis_valid():
             Requirement(
                 description="Customers can log in.",
                 category="functional",
-                source="inferred"
+                source="inferred",
+                evidence= "Users can log in using their credentials."
             )
         ],
         gaps=[
@@ -46,3 +47,16 @@ def test_requirements_analysis_default_lists():
 def test_requirements_analysis_missing_issue_key():
     with pytest.raises(ValidationError):
         RequirementsAnalysis()
+
+def test_requirement_preserves_evidence():
+    requirement = Requirement(
+        description="Users can log in using email and password.",
+        category="functional",
+        source="explicit",
+        evidence="Users can log in using their email and password."
+    )
+
+    assert requirement.source == "explicit"
+    assert requirement.evidence == (
+        "Users can log in using their email and password."
+    )

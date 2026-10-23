@@ -9,7 +9,10 @@ from backend.app.utils.adf_parser import extract_text_from_adf
 from backend.app.schemas.requirements import RequirementsAnalysis
 
 from backend.app.services.ollama_client import OllamaClient
-from backend.app.services.requirements_agent import RequirementsAgent, RequirementsAnalysisError
+from backend.app.services.agents.requirements_agent import RequirementsAgent, RequirementsAnalysisError
+
+from backend.app.services.agents.test_design_agent import TestDesignAgent
+from backend.app.schemas.test_cases import TestDesignResult
 
 
 app = FastAPI(
@@ -93,3 +96,18 @@ def analyze_jira_requirements(issue_key: str):
             status_code=502,
             detail="AI returned an invalid requirements analysis"
         ) from error
+
+@app.post(
+    "/ai/tests/design/{issue_key}",
+    response_model=TestDesignResult,
+)
+def design_tests(issue_key: str):
+    issue = fetch_jira_issue(issue_key)
+
+    requirements_agent = RequirementsAgent(OllamaClient())
+    analysis = requirements_agent.analyze(issue)
+
+    test_design_agent = TestDesignAgent(OllamaClient())
+    result = test_design_agent.generate(analysis)
+
+    return result

@@ -6,6 +6,7 @@ class Requirement(BaseModel):
     description: str
     category: str
     source: Literal["explicit", "inferred"]
+    evidence: str | None = None
 
 class RequirementGap(BaseModel):
     description: str
@@ -25,3 +26,8 @@ class RequirementsAnalysis(BaseModel):
     suggested_test_scenarios: list[str] = Field(
         default_factory=list
     )
+
+class RequirementsAIOutput(BaseModel):
+    requirements: list[Requirement] = Field(default_factory=list)
+    gaps: list[RequirementGap] = Field(default_factory=list)
+    suggested_test_scenarios: list[str] = Field(default_factory=list)

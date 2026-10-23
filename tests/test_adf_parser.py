@@ -84,3 +84,36 @@ def test_extract_text_from_bullet_list():
         "- User can log in.\n"
         "- Invalid password shows an error.\n"
     )
+
+def test_heading_followed_by_paragraph():
+    adf = {
+        "type": "doc",
+        "content": [
+            {
+                "type": "heading",
+                "attrs": {"level": 2},
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Acceptance Criteria",
+                    }
+                ],
+            },
+            {
+                "type": "paragraph",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "AC1 — Successful Login",
+                    }
+                ],
+            },
+        ],
+    }
+
+    result = extract_text_from_adf(adf)
+
+    assert result == (
+        "Acceptance Criteria\n"
+        "AC1 — Successful Login\n"
+    )

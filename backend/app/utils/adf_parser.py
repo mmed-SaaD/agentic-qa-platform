@@ -22,6 +22,9 @@ def extract_text_from_adf(adf):
         if node_type == "paragraph":
             return extract_text_from_adf(content) + "\n"
 
+        if node_type == "heading":
+            return extract_text_from_adf(content) + "\n"
+        
         if node_type == "listItem":
             return "- " + extract_text_from_adf(content)
 

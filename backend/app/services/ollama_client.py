@@ -1,5 +1,7 @@
 import requests
 
+from pydantic import BaseModel
+
 class OllamaClient:
     def __init__(
             self,
@@ -9,7 +11,7 @@ class OllamaClient:
         self.base_url = base_url.strip("/")
         self.model = model
 
-    def generate(self, prompt: str) -> str:
+    def generate(self, prompt: str, output_schema: type[BaseModel] | None = None) -> str:
         url = f"{self.base_url}/api/generate"
 
         payload = {
@@ -18,6 +20,9 @@ class OllamaClient:
             "stream": False,
             "think": False,
         }
+
+        if output_schema is not None:
+            payload["format"] = output_schema.model_json_schema()
 
         response = requests.post(
             url,
@@ -29,4 +34,4 @@ class OllamaClient:
 
         data = response.json()
 
-        return data["response"]
+        return response.json()["response"]

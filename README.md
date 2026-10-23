@@ -1,332 +1,272 @@
 # Agentic QA Platform
 
-**A hands-on QA engineering project bringing Jira, test automation, and local AI together.**
+**An AI-assisted quality engineering platform connecting Jira requirements to structured test design, with a roadmap toward executable automation, CI/CD feedback, and release-risk analysis.**
 
-> **Status:** Active development — FastAPI backend, Jira issue retrieval, and an AI-powered RequirementsAgent are operational. The latest local test run reported **23 passed, 1 warning**.
+> **Project status — 23 October 2026:** FastAPI backend, Jira integration, requirements analysis, and test design are implemented and exercised through the running application. **45 automated tests pass** (`pytest -q`, 1.10 s in the latest local run). Generation of executable Playwright/Pytest tests and downstream orchestration are the next development milestones.
 
-## Overview
+## Why I built this
 
-I started Agentic QA Platform to explore a practical question: **how can AI support a QA engineer without replacing sound testing practices?**
+Traditional test automation often starts after someone has already interpreted the requirements and written the test scenarios. I started this project to explore how AI agents could support more of the QA lifecycle: retrieving real work items from Jira, interpreting requirements, identifying gaps, designing tests, and eventually turning approved cases into executable checks.
 
-The idea is to connect real Jira issues to a set of focused QA tools and agents. The first working agent reads a Jira story, identifies testable requirements, highlights unanswered questions, and proposes test scenarios. Later stages will cover test-case design, execution, failure investigation, and release decisions.
+The goal is not to replace a QA engineer's judgment. It is to build a practical, reviewable workflow where AI accelerates repetitive analysis and drafting, while validation, traceability, and human review keep the output accountable.
 
-I am building the project one component at a time, with automated tests, clear interfaces, and human review. An AI suggestion is a starting point for QA work, not an approved requirement.
+This is an evolving portfolio project, developed hands-on from the backend foundation onward.
 
-## Implemented Features
+## Current capabilities
 
-- **FastAPI backend:** Root, health-check, Jira issue retrieval, and AI requirements-analysis endpoints.
-- **Jira Cloud integration:** Authenticated Jira REST API v3 access through a reusable `JiraClient` using environment-based credentials.
-- **Issue normalization:** Retrieve Jira issue details and convert Atlassian Document Format (ADF) descriptions into readable text.
-- **API error handling:** Map missing/inaccessible Jira issues and upstream communication errors to appropriate HTTP responses.
-- **Local LLM integration:** Reusable `OllamaClient` calling Ollama's `/api/generate` endpoint. The current development model is `qwen3:1.7b`.
-- **RequirementsAgent:** Analyze Jira issue content to suggest requirements, clarification gaps, and test scenarios.
-- **Structured AI output:** Parse JSON into Pydantic models and reject invalid JSON or invalid schemas.
-- **Requirement provenance:** Classify requirements as `explicit` or `inferred` using a constrained Pydantic field. This is model-reported classification, **not yet independently verified against source evidence**.
-- **Automated tests:** Pytest coverage for backend behavior, Jira-related functionality, ADF parsing, requirements schemas, and mocked agent responses. Latest reported run: **23 passed**.
+### 1. FastAPI backend
 
-## What I Am Working On Next
+- Python/FastAPI service with a working `/health` endpoint and interactive API documentation at `/docs`.
+- Modular separation between API routes, service clients, agents, and Pydantic schemas.
+- Automated tests for API behavior, validation, and failure paths.
 
-- Verify AI-generated requirements against exact Jira evidence and evaluate analysis quality.
-- Extract and trace acceptance criteria to proposed tests.
-- Build a dedicated **Test Design Agent** for structured test cases.
-- Integrate **Playwright** for automated UI testing and collect execution artifacts.
-- Add failure triage, defect-report drafts, and release risk assessment.
-- Add human review before actions that modify Jira or affect releases.
-- Explore multi-agent orchestration, PostgreSQL, a dashboard, Docker, CI/CD, and observability.
+### 2. Jira Cloud integration
 
-## Technology Stack
+- Authenticated communication with a real Jira Cloud project using environment-based credentials.
+- Retrieval of issues by key, including issue summary, status, and description.
+- Conversion of Jira's Atlassian Document Format (ADF) descriptions into usable text.
+- Explicit handling of missing/inaccessible issues and upstream communication failures.
+- Real Jira project used during development: **SHOP**, including registration and login user stories.
 
-| Area | Technology | Status |
-| --- | --- | --- |
-| Language | Python | Implemented |
-| API | FastAPI, Uvicorn | Implemented |
-| HTTP clients | Requests | Implemented |
-| Configuration | python-dotenv / environment variables | Implemented |
-| Data validation | Pydantic | Implemented |
-| Testing | Pytest, FastAPI TestClient, mocks | Implemented |
-| Project management | Jira Cloud REST API v3 | Implemented (issue retrieval) |
-| Local AI inference | Ollama, Qwen3 1.7B | Implemented |
-| UI automation | Playwright | Planned |
-| Agent orchestration | LangGraph (under consideration) | Planned |
-| Database | PostgreSQL | Planned |
-| Containerization | Docker | Planned |
-| CI/CD | GitHub Actions | Planned |
-| Version control | Git, GitHub | Implemented |
+**Implemented API route:** `GET /jira/issue/{issue_key}`.
+
+### 3. Local Ollama integration
+
+- Local LLM inference using Ollama, currently configured for **Qwen3 1.7B**.
+- A reusable `OllamaClient` for sending prompts and requesting structured JSON output using a Pydantic-generated schema.
+- Local inference avoids a paid hosted-LLM dependency for the current development workflow.
+- Model upgrades can be evaluated separately from agent logic; a more capable model may improve output quality but does not eliminate the need for review.
+
+### 4. Requirements Analysis Agent
+
+- Takes a Jira issue and analyzes its requirements.
+- Produces structured functional, non-functional, and security requirements where supported by the source.
+- Identifies potential requirement gaps and suggests test scenarios.
+- Tracks whether a requirement is **explicit** or **inferred**, with supporting evidence.
+- Validates model output with Pydantic; malformed or invalid output is handled as an error rather than silently accepted.
+
+**End-to-end behavior verified:** The running backend has retrieved real SHOP issues and produced structured requirements analysis through Ollama.
+
+### 5. Test Design Agent
+
+- Consumes the structured requirements analysis and generates manual test cases.
+- **Generates per requirement**, rather than asking the model to design an entire story's tests in one large response.
+- Produces structured test cases with:
+  - descriptive title;
+  - classification (`positive`, `negative`, or `boundary`);
+  - preconditions;
+  - actionable steps;
+  - expected result.
+- Validates generated data against Pydantic schemas.
+- Combines results and removes **exact** duplicates based on test type, steps, and expected result.
+
+**End-to-end behavior verified:** The running application has generated test cases for real SHOP stories, including login (`SHOP-2`) and registration (`SHOP-3`).
+
+**Known limitation:** Valid JSON is not the same as correct QA reasoning. The current small model can omit preconditions, misclassify scenarios, include assertions in steps, or assume behavior not supported by the source requirements. Exact duplicate filtering does not detect semantically equivalent tests. **Generated cases are drafts that require QA review before automation.**
 
 ## Architecture
 
 ```text
-                      Developer / API Client
-                               |
-                               v
-                         FastAPI Backend
-                               |
-               +---------------+----------------+
-               |                                |
-               v                                v
-      Jira issue retrieval            AI requirements endpoint
-               |                                |
-               v                                v
-           JiraClient                    fetch_jira_issue()
-               |                                |
-               v                                v
-        Jira Cloud API                   RequirementsAgent
-                                                |
-                                                v
-                                           OllamaClient
-                                                |
-                                                v
-                                        Local Ollama / Qwen3
-                                                |
-                                                v
-                                    JSON parsing + Pydantic
-                                                |
-                                                v
-                                     RequirementsAnalysis
-
-           Future: Test Design Agent -> Test Execution -> Failure Triage
-                                      -> Release Risk
+                Jira Cloud (SHOP project)
+                           |
+                           v
+                  FastAPI REST API
+                           |
+                     Jira Client
+                           |
+                  ADF text conversion
+                           |
+                           v
+                 Requirements Agent
+                           |
+                    Ollama Client
+                     (local LLM)
+                           |
+                 Pydantic validation
+                           |
+                           v
+                  Test Design Agent
+                  (per requirement)
+                           |
+                    Ollama Client
+                           |
+                 Pydantic validation
+                           |
+                  Exact deduplication
+                           |
+                           v
+               Generated test-case drafts
+                           |
+                      QA review
+                           |
+                           v
+              [Planned: automation agent]
+                           |
+              [Planned: Playwright/Pytest]
+                           |
+          [Planned: CI/CD, reports, triage]
 ```
 
-**Responsibilities:**
+The brackets in the diagram identify **planned components**, not functionality already delivered.
 
-- **API layer:** Accepts requests and exposes validated responses.
-- **Jira service:** Handles external Jira communication and issue retrieval.
-- **ADF parsing:** Converts Jira's rich-text description structure to plain text.
-- **Ollama service:** Encapsulates communication with the local language model.
-- **RequirementsAgent:** Builds the analysis prompt, parses model output, and returns typed analysis data.
-- **Pydantic schemas:** Define the contract for requirements, gaps, and suggested scenarios.
+## Technology stack
 
-## Project Structure
+| Area | Technology |
+| --- | --- |
+| Backend/API | Python, FastAPI |
+| Data contracts | Pydantic |
+| Work-item management | Jira Cloud REST API |
+| LLM runtime | Ollama (local) |
+| Current model | Qwen3 1.7B |
+| HTTP communication | Python HTTP clients |
+| Automated verification | Pytest, FastAPI TestClient, `unittest.mock` |
+| Development environment | WSL/Linux, Python virtual environment |
+| Source control | Git, GitHub |
+| Planned executable browser tests | Playwright + Pytest |
+| Planned delivery/reporting | CI/CD and test reporting integration |
 
-The following highlights the main components; additional test and package files may be present.
+## Testing strategy and evidence
+
+The project uses **both isolated automated tests and real pipeline testing**. They are complementary and should not be confused.
+
+### Automated tests (mocks and controlled inputs)
+
+Mocks are used where appropriate to simulate Jira or Ollama responses and isolate the component under test. This lets the suite verify API behavior, data parsing, schema constraints, expected service calls, and error handling quickly and repeatably, without depending on network access or nondeterministic LLM responses.
+
+**Latest locally reported result:**
 
 ```text
-agentic-qa-platform/
-├── backend/
-│   └── app/
-│       ├── main.py
-│       ├── agents/
-│       │   └── requirements_agent.py
-│       ├── schemas/
-│       │   └── requirements.py
-│       └── services/
-│           ├── jira_client.py
-│           └── ollama_client.py
-├── scripts/
-│   └── test_jira_connection.py
-├── tests/
-│   ├── test_requirements_agent.py
-│   ├── test_requirements_schema.py
-│   └── ...
-├── .env.example
-├── .gitignore
-├── requirements.txt
-└── README.md
+$ pytest -q
+............................................. [100%]
+45 passed in 1.10s
 ```
 
-## Getting Started
+This is evidence of the automated test suite's latest run, **not** a claim that 45 end-to-end tests were executed against Jira and Ollama.
+
+### Real end-to-end pipeline checks
+
+In addition to the mocked tests, the **actual running application** has been exercised using real services:
+
+1. Connect to Jira Cloud and retrieve SHOP issues through the backend.
+2. Parse issue descriptions, including ADF content.
+3. Call the locally running Ollama model for requirements analysis.
+4. Validate and return structured requirements output through FastAPI.
+5. Generate structured test cases from the analyzed requirements using the Test Design Agent.
+6. Inspect the returned cases for relevance, classification, prerequisites, and unsupported assumptions.
+
+These checks establish that the integrated **Jira → FastAPI → Ollama → requirements analysis → test design** workflow has run in practice. They are **manual integration/end-to-end exercises**, not yet a continuously automated live-service E2E suite. The eventual **generated Playwright/Pytest execution pipeline has not been implemented yet**.
+
+### Quality philosophy
+
+- **Mocks are additional safeguards**, not the sole evidence that the platform works.
+- Real-service tests verify integration; isolated tests make regressions easier to diagnose.
+- Pydantic validates structure, not the factual correctness of an AI-generated scenario.
+- AI-generated test cases should be reviewed before they are accepted or automated.
+
+## Project evolution
+
+| Phase | Work completed |
+| --- | --- |
+| Foundation | Repository, WSL/Python environment, FastAPI service, health check, first automated tests |
+| Jira connectivity | Jira Cloud configuration, issue retrieval, credential handling, error mapping |
+| Jira content handling | ADF description parsing and focused parser tests |
+| Requirements intelligence | Requirements Agent, structured schemas, local Ollama integration, output validation |
+| Real project workflow | SHOP Jira project with product-oriented stories, replacing earlier integration-demo tickets as the main test inputs |
+| Test design | TestCase/TestDesign schemas, Test Design Agent, API integration, duplicate filtering |
+| Test design refinement | Per-requirement generation, clearer titles and classifications, review of real SHOP-2/SHOP-3 outputs |
+| Current verification | **45 automated tests passing**, plus successful live Jira/Ollama pipeline exercises |
+
+## Running locally
 
 ### Prerequisites
 
-- Python 3.10 or later
-- Git
-- Jira Cloud account and Atlassian API token
-- [Ollama](https://ollama.com/) installed and running for AI analysis
-- A system capable of running the chosen local model; the smaller `qwen3:1.7b` model is used for development on CPU
+- Python and a working virtual environment.
+- Access to a Jira Cloud project and an API token.
+- Ollama installed and reachable from the backend environment.
+- The configured Ollama model downloaded locally.
 
-### 1. Clone the repository
-
-```bash
-git clone git@github.com:mmed-SaaD/agentic-qa-platform.git
-cd agentic-qa-platform
-```
-
-### 2. Create and activate a virtual environment
+### 1. Get the code and install dependencies
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+ git clone https://github.com/mmed-SaaD/agentic-qa-platform.git
+ cd agentic-qa-platform
+ python3 -m venv .venv
+ source .venv/bin/activate
+ pip install -r requirements.txt
 ```
 
-On Windows PowerShell, activation is `.venv\Scripts\Activate.ps1`.
+If your dependency file is located in a subdirectory, use the corresponding path.
 
-### 3. Install Python dependencies
+### 2. Configure Jira access
 
-```bash
-python -m pip install -r requirements.txt
-```
-
-### 4. Configure Jira credentials
-
-Copy `.env.example` to `.env` and populate the Jira values:
+Create a local `.env` from the project's `.env.example` and provide your own values:
 
 ```dotenv
 JIRA_BASE_URL=https://your-site.atlassian.net
-JIRA_EMAIL=your-atlassian-email@example.com
-JIRA_API_TOKEN=your-api-token
+JIRA_EMAIL=your-email@example.com
+JIRA_API_TOKEN=your-jira-api-token
 ```
 
-**Never commit `.env`, passwords, or API tokens.** Ensure `.env` is ignored by Git.
+Never commit `.env` or API tokens to Git.
 
-### 5. Start Ollama and download the development model
-
-Install Ollama on the host, then run:
+### 3. Start or verify Ollama
 
 ```bash
-ollama pull qwen3:1.7b
+ollama list
+ollama run qwen3:1.7b
 ```
 
-Make sure the Ollama service is running and accessible at `http://localhost:11434`. In the current setup, Ollama runs on Windows and the FastAPI backend runs in WSL. The client uses the Ollama HTTP API; the model must be available to the Ollama server receiving requests.
+Ollama must remain accessible to the FastAPI backend. In WSL/Windows environments, the host address may need adjustment depending on how Ollama is installed and networked.
 
-> The default model is currently configured in `backend/app/services/ollama_client.py`. If you choose a different model or host, adjust the client configuration accordingly.
-
-### 6. Start FastAPI
+### 4. Start FastAPI
 
 From the repository root:
 
 ```bash
-python -m uvicorn backend.app.main:app --reload
+uvicorn backend.app.main:app --reload
 ```
 
-- API: http://127.0.0.1:8000
-- Interactive API docs: http://127.0.0.1:8000/docs
+Open `http://127.0.0.1:8000/docs` for the available endpoints. The interactive documentation is the source of truth for request methods and paths as routes evolve.
 
-## API Endpoints
-
-| Method | Endpoint | Description | Status |
-| --- | --- | --- | --- |
-| `GET` | `/` | Root/welcome endpoint | Implemented |
-| `GET` | `/health` | Application health check | Implemented |
-| `GET` | `/jira/issue/{issue_key}` | Retrieve and normalize a Jira issue | Implemented |
-| `POST` | `/ai/requirements/analyze/{issue_key}` | Analyze a Jira issue using the local RequirementsAgent | Implemented |
-
-### Example: AI requirements analysis
-
-Open `/docs` and execute:
-
-```http
-POST /ai/requirements/analyze/SHOP-2
-```
-
-An illustrative response (actual model output varies):
-
-```json
-{
-  "issue_key": "SHOP-2",
-  "requirements": [
-    {
-      "description": "Registered customers can log in using an email address and password.",
-      "category": "functional",
-      "source": "explicit"
-    }
-  ],
-  "gaps": [
-    {
-      "description": "The expected response to invalid credentials is not specified.",
-      "question": "What should the application display after an unsuccessful login?"
-    }
-  ],
-  "suggested_test_scenarios": [
-    "Verify login with valid credentials",
-    "Verify the defined behavior for invalid credentials"
-  ]
-}
-```
-
-`source` accepts only `explicit` or `inferred`. The distinction is useful for review, but the current system does not yet verify whether each classification is factually supported by a quotation from Jira.
-
-### Error handling
-
-- Jira lookup and communication errors are translated into API errors.
-- Invalid AI JSON or output that fails Pydantic validation is handled as a requirements-analysis error; the AI endpoint returns an upstream failure response rather than silently accepting malformed output.
-- Ollama must be reachable for AI requests. Model inference can be slow on CPU-only hardware.
-
-## Testing
-
-Run the complete suite from the repository root:
+### 5. Run the automated test suite
 
 ```bash
-python -m pytest -q
+pytest -q
 ```
 
-Latest locally reported result:
+### 6. Exercise the live pipeline
 
-```text
-23 passed, 1 warning in 0.72s
-```
+Using `/docs`, retrieve a Jira issue, run requirements analysis, and generate test cases for a SHOP issue such as `SHOP-2` or `SHOP-3`. Review the resulting JSON rather than treating schema-valid output as automatically correct.
 
-The suite includes mocked integrations so core behavior can be checked without requiring live Jira or Ollama calls for every test. Tests exercise valid and invalid requirements-analysis responses, including rejection of invalid `source` values.
+## Current limitations
 
-The remaining warning should be investigated separately; a passing suite does not mean all runtime paths or AI output quality have been fully verified.
+- The local Qwen3 1.7B model sometimes produces incomplete preconditions or unsupported assumptions.
+- Per-requirement generation can increase inference time because it makes multiple Ollama requests.
+- Exact duplicate removal does not catch paraphrased or semantically overlapping scenarios.
+- Test cases are currently generated as **manual test specifications**, not executable browser tests.
+- No automated approval gate or full requirement-to-test traceability has been completed yet.
+- Failure triage, release-risk scoring, and CI/CD feedback loops remain future work.
 
-## Development Roadmap
+## Roadmap
 
-### Phase 1 — Foundation
+1. **Next — Automation generation:** Convert reviewed test cases into executable Playwright/Pytest scripts against a defined test application with known behavior and selectors.
+2. **Execution and feedback:** Run generated tests, capture results and failures, and produce useful reports.
+3. **Traceability:** Link generated tests and execution results back to source requirements/Jira issues.
+4. **CI/CD integration:** Trigger and report automated runs in a repeatable pipeline.
+5. **Failure triage:** Investigate failing tests and distinguish likely product defects from flaky tests or environment issues.
+6. **Release risk:** Summarize coverage, failures, and outstanding risk for a release decision.
+7. **Model evaluation:** Compare the current small local model with a stronger Ollama model using the same stories and quality criteria.
 
-- [x] Initialize repository and Python environment
-- [x] Implement FastAPI root and health endpoints
-- [x] Add initial automated tests
-- [x] Publish code to GitHub
+Roadmap items are planned capabilities, not claims of current implementation.
 
-### Phase 2 — Jira Integration
+## Repository
 
-- [x] Configure Jira Cloud project and issue types
-- [x] Authenticate using environment variables
-- [x] Implement reusable `JiraClient`
-- [x] Expose issue retrieval through FastAPI
-- [x] Parse ADF descriptions
-- [x] Add mocked Jira-related tests and error handling
-- [ ] Add controlled issue creation/update workflows
+GitHub: [mmed-SaaD/agentic-qa-platform](https://github.com/mmed-SaaD/agentic-qa-platform)
 
-### Phase 3 — Requirements Intelligence
+## Author
 
-- [x] Integrate local Ollama model
-- [x] Implement `RequirementsAgent`
-- [x] Generate structured requirements, gaps, and scenario suggestions
-- [x] Validate output with Pydantic
-- [x] Add explicit/inferred source classification
-- [ ] Verify traceability against exact Jira evidence
-- [ ] Evaluate semantic quality and reduce unsupported assumptions
-- [ ] Add human review and approval
+**Designed and developed by BAZOURHI Mohamed Saad (Me- :D)** as a hands-on QA engineering and AI automation portfolio project.
 
-### Phase 4 — Test Design and Execution
+---
 
-- [ ] Implement dedicated Test Design Agent
-- [ ] Generate structured test cases from reviewed requirements
-- [ ] Integrate Playwright and automated execution
-- [ ] Store execution results and artifacts
-- [ ] Link tests to Jira requirements
-
-### Phase 5 — Intelligent QA Workflows
-
-- [ ] Analyze test failures
-- [ ] Draft and triage defects with human approval
-- [ ] Implement release risk assessment
-- [ ] Introduce agent orchestration where useful
-
-### Phase 6 — Production-Oriented Engineering
-
-- [ ] Add persistence and dashboard
-- [ ] Containerize the platform
-- [ ] Configure GitHub Actions CI/CD
-- [ ] Add structured logging, metrics, and AI evaluation
-- [ ] Strengthen access controls and document deployment
-
-## How I Approach This Project
-
-- **Separation of concerns:** Keep API routes, integrations, schemas, and agents independently maintainable.
-- **Testability:** Mock external dependencies and test error paths.
-- **Traceability:** Distinguish explicit Jira requirements from inferred suggestions; future work will add evidence-level verification.
-- **Security:** Store secrets outside source control and avoid leaking credentials in errors or logs.
-- **Human oversight:** Require review before AI suggestions become accepted requirements or trigger external changes.
-- **Incremental delivery:** Implement, test, and document features in small steps.
-
-## About the Developer
-
-Designed and developed by **[BAZOURHI Mohamed Saad](https://github.com/mmed-SaaD)**.
-
-I am building Agentic QA Platform as part of my journey in QA engineering and test automation. It gives me a place to turn ideas into working features, practice reliable software engineering, and learn how AI can fit into a real testing workflow.
-
-Feedback, ideas, and constructive suggestions are welcome.
-
+*Last updated: 23 October 2026.*
